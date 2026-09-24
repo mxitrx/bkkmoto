@@ -3,7 +3,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 // ==========================================
 // 1. CONFIG & BACKEND SETUP (SMOOTH MOTOGP THEME)
 // ==========================================
-const GAS_URL = "https://script.google.com/macros/s/AKfycbzopLs_wCM82zqR_9isoTUusY4Vji-6U8iaSZIPyw49b6d3TZehQnTNp2dsnWd8XEzf/exec";
+const GAS_URL = "https://script.google.com/macros/s/AKfycbwXflgZA8VjIm19RhZoCyEKQix7venO3kyzH01Pbj79ktfAepxh293gFlwDViX3Q5o8/exec";
 
 const defaultConfig = {
   title: "BKK GRAND PRIX",
