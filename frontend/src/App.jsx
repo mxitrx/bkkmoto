@@ -73,12 +73,12 @@ export default function App() {
   const [isScrolled, setIsScrolled] = useState(false);
   
   const [config, setConfig] = useState(() => {
-    try { const saved = localStorage.getItem('motoGpProPremiumV1'); return saved ? JSON.parse(saved) : defaultConfig; } 
+    try { const saved = localStorage.getItem('motoGpProPremiumV2'); return saved ? JSON.parse(saved) : defaultConfig; } 
     catch { return defaultConfig; }
   });
 
   const [registrations, setRegistrations] = useState(() => {
-    try { const saved = localStorage.getItem('motoGpProPremiumRegisV1'); return saved ? JSON.parse(saved) : []; } 
+    try { const saved = localStorage.getItem('motoGpProPremiumRegisV2'); return saved ? JSON.parse(saved) : []; } 
     catch { return []; }
   });
 
@@ -98,8 +98,8 @@ export default function App() {
   const [editingUserId, setEditingUserId] = useState(null);
   const [editUserForm, setEditUserForm] = useState({});
 
-  useEffect(() => { localStorage.setItem('motoGpProPremiumV1', JSON.stringify(config)); }, [config]);
-  useEffect(() => { localStorage.setItem('motoGpProPremiumRegisV1', JSON.stringify(registrations)); }, [registrations]);
+  useEffect(() => { localStorage.setItem('motoGpProPremiumV2', JSON.stringify(config)); }, [config]);
+  useEffect(() => { localStorage.setItem('motoGpProPremiumRegisV2', JSON.stringify(registrations)); }, [registrations]);
 
   useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 50);
@@ -175,16 +175,25 @@ export default function App() {
   const syncWithGoogleSheet = async (isAuto = false) => {
     if(!isAuto) setIsSyncing(true);
     try {
-      const response = await fetch(GAS_URL);
+      const response = await fetch(GAS_URL + "?timestamp=" + new Date().getTime(), {
+        cache: 'no-store',
+        headers: {
+          'Pragma': 'no-cache',
+          'Cache-Control': 'no-cache'
+        }
+      });
       const data = await response.json();
       if(data && Array.isArray(data)) {
         const formattedData = data.map(r => ({
           id: r.id || r.Id || r.ID || Date.now() + Math.random(),
-          name: r.name || r.Name || '', email: r.email || r.Email || '',
-          phone: r.phone || r.Phone || '', company: r.company || r.Company || '',
-          ticketName: r.ticketName || r.TicketName || r.ticket || '',
+          name: r.name || r.Name || '', 
+          email: r.email || r.Email || '',
+          phone: r.phone || r.Phone || '', 
+          company: r.company || r.Company || '',
+          // เพิ่มการดักจับชื่อคอลัมน์หลายรูปแบบ ป้องกันค่าว่าง (NULL)
+          ticketName: r.ticketName || r.TicketName || r['Ticket Name'] || r.ticket || r.Ticket || 'UNKNOWN PASS',
           ticketId: String(r.ticketId || r.TicketId || ''),
-          totalPaid: Number(r.totalPaid || r.TotalPaid || r.total || 0),
+          totalPaid: Number(r.totalPaid || r.TotalPaid || r['Total Paid'] || r.total || 0),
           timestamp: r.timestamp || r.Timestamp || ''
         }));
         setRegistrations(formattedData.filter(r => r.name !== ''));
@@ -198,7 +207,7 @@ export default function App() {
   const handleArrayChange = (arr, id, field, value) => setConfig(prev => ({ ...prev, [arr]: (prev[arr]||[]).map(i => i.id === id ? { ...i, [field]: value } : i) }));
   
   const handleSaveConfig = () => {
-    localStorage.setItem('motoGpProPremiumV1', JSON.stringify(config));
+    localStorage.setItem('motoGpProPremiumV2', JSON.stringify(config));
     alert('🏁 บันทึกการตั้งค่าลงระบบเรียบร้อยแล้ว!');
   };
 
@@ -273,7 +282,7 @@ export default function App() {
     .reveal.is-visible { opacity: 1; transform: translateY(0); }
     .delay-1 { transition-delay: 0.1s; } .delay-2 { transition-delay: 0.2s; }
     
-    /* New: Smooth Shine Sweep Effect for Text */
+    /* Text Shine Sweep Effect */
     @keyframes shine { to { background-position: 200% center; } }
     .subtitle-sweep {
       background: linear-gradient(90deg, #fff 0%, var(--primary) 50%, #fff 100%);
@@ -423,15 +432,17 @@ export default function App() {
                 <div className="cd-box"><div className="cd-num">{timeLeft.minutes}</div><div className="cd-label">Mins</div></div>
                 <div className="cd-box"><div className="cd-num">{timeLeft.seconds}</div><div className="cd-label">Secs</div></div>
               </div>
+              
               <h1 className="glow-text">{config.title} <br/>
                 <span className="subtitle-sweep block text-4xl font-extrabold mt-2 uppercase">
                   NIGHT RACE, SPEED & APEX.
                 </span>
               </h1>
+              
               <p style={{ color: '#e4e4e7', fontSize: '18px', maxWidth: '650px', marginBottom: '50px', fontWeight: 500 }} className="delay-1">{config.aboutText}</p>
               
               <div className="flex flex-wrap items-center gap-6 delay-2" style={{ display: 'flex', alignItems: 'center', gap: '30px' }}>
-                <button className="btn btn-primary" style={{ padding: '20px 40px', fontSize: '16px' }} onClick={() => scrollTo('register')}>BOOK PASS ➔</button>
+                <button className="btn btn-primary" style={{ padding: '20px 40px', fontSize: '18px' }} onClick={() => scrollTo('register')}>BOOK PASS ➔</button>
                 <div style={{ display: 'flex', gap: '15px', borderLeft: '3px solid var(--primary)', paddingLeft: '20px' }}>
                   <div><div style={{ color: '#fff', fontSize: '18px', fontWeight: 900, textTransform: 'uppercase' }}>{config.date}</div><div style={{ color: '#a1a1aa', fontSize: '14px', fontWeight: 600 }}>{config.location}</div></div>
                 </div>
@@ -677,7 +688,7 @@ export default function App() {
                   <div style={{ fontSize: '12px', fontWeight: 900, color: '#a1a1aa', textTransform: 'uppercase', letterSpacing: '1px' }}>Name</div>
                   <div style={{ fontSize: '18px', fontWeight: 900, color: '#fff', marginBottom: '10px' }}>{ticketModal.name}</div>
                   <div style={{ fontSize: '12px', fontWeight: 900, color: '#a1a1aa', textTransform: 'uppercase', letterSpacing: '1px' }}>Access Level</div>
-                  <div style={{ fontSize: '16px', color: 'var(--primary)', fontWeight: 900, marginTop: '2px', textTransform: 'uppercase' }}>{ticketModal.tier}</div>
+                  <div style={{ fontSize: '16px', color: 'var(--primary)', fontWeight: 900, marginTop: '2px', textTransform: 'uppercase' }}>{ticketModal.tier || 'UNKNOWN PASS'}</div>
                 </div>
               </div>
               
@@ -750,7 +761,7 @@ export default function App() {
                   <h2 className="text-4xl font-black text-white tracking-tight uppercase">Live Telemetry</h2>
                   <p className="text-zinc-500 text-xs mt-2 font-mono tracking-widest uppercase">Real-time Paddock Data</p>
                 </div>
-                <button onClick={() => syncWithGoogleSheet()} disabled={isSyncing} className="px-6 py-3 bg-white/5 hover:bg-white/10 text-white text-xs font-black uppercase tracking-widest transition-all flex items-center gap-2 border border-white/10 rounded-full">
+                <button onClick={() => syncWithGoogleSheet()} disabled={isSyncing} className="px-6 py-3 bg-white/5 hover:bg-white/10 text-white text-xs font-black uppercase tracking-widest transition-all flex items-center gap-2 border border-white/10 rounded-2xl">
                   <span className={isSyncing ? "animate-spin" : ""}>🔄</span> {isSyncing ? "SYNCING..." : "FORCE SYNC"}
                 </button>
               </div>
@@ -818,7 +829,7 @@ export default function App() {
                             </div>
                           </div>
                           <div className="text-right flex items-center gap-4">
-                            <span className="inline-block px-3 py-1 text-[9px] font-black bg-black text-white uppercase tracking-widest border border-white/10 rounded-full">{r.ticketName}</span>
+                            <span className="inline-block px-3 py-1 text-[9px] font-black bg-black text-white uppercase tracking-widest border border-white/10 rounded-full">{r.ticketName || 'UNKNOWN PASS'}</span>
                             <div className="text-sm font-black text-emerald-400 font-mono w-24 text-right">฿{Number(r.totalPaid).toLocaleString()}</div>
                           </div>
                         </div>
@@ -861,7 +872,7 @@ export default function App() {
                                    <input className="w-full p-3 bg-black border border-white/10 text-xs text-zinc-300 font-mono rounded-xl focus:border-red-500 outline-none" value={editUserForm.email} onChange={e => setEditUserForm({...editUserForm, email: e.target.value})} placeholder="Email" />
                                    <input className="w-full p-3 bg-black border border-white/10 text-xs text-zinc-300 font-mono rounded-xl focus:border-red-500 outline-none" value={editUserForm.phone} onChange={e => setEditUserForm({...editUserForm, phone: e.target.value})} placeholder="Phone" />
                                  </td>
-                                 <td className="py-4 px-8"><span className="px-4 py-1.5 text-[10px] font-black bg-white/5 text-zinc-300 uppercase rounded-full border border-white/10">{r.ticketName}</span></td>
+                                 <td className="py-4 px-8"><span className="px-4 py-1.5 text-[10px] font-black bg-white/5 text-zinc-300 uppercase rounded-full border border-white/10">{r.ticketName || 'UNKNOWN PASS'}</span></td>
                                  <td className="py-4 px-8 font-bold text-emerald-400 font-mono text-right">{Number(r.totalPaid).toLocaleString()}</td>
                                  <td className="py-4 px-8 text-center space-x-2 whitespace-nowrap">
                                    <button onClick={saveUserEdit} className="px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-black text-[10px] font-black uppercase tracking-wider rounded-full transition-colors">Save</button>
@@ -879,7 +890,7 @@ export default function App() {
                                    <div className="text-[10px] text-zinc-600 mt-1 font-mono">{r.phone}</div>
                                  </td>
                                  <td className="py-6 px-8">
-                                   <span className="px-4 py-1.5 text-[9px] font-black bg-black text-zinc-300 border border-white/10 uppercase tracking-widest rounded-full">{r.ticketName}</span>
+                                   <span className="px-4 py-1.5 text-[9px] font-black bg-black text-zinc-300 border border-white/10 uppercase tracking-widest rounded-full">{r.ticketName || 'UNKNOWN PASS'}</span>
                                  </td>
                                  <td className="py-6 px-8 font-black text-emerald-400 text-sm font-mono text-right">{Number(r.totalPaid).toLocaleString()}</td>
                                  <td className="py-6 px-8 text-center space-x-2 whitespace-nowrap">
@@ -907,7 +918,7 @@ export default function App() {
                 </button>
               </div>
 
-              {/* BACKGROUND IMAGES SETTING (NEW!) */}
+              {/* BACKGROUND IMAGES SETTING */}
               <div className="bg-[#0a0a0a] p-8 border border-white/5 shadow-xl space-y-6 rounded-3xl">
                 <div className="border-b border-white/5 pb-4">
                   <h3 className="text-lg font-black text-white uppercase">🖼️ Background Images</h3>
@@ -979,7 +990,7 @@ export default function App() {
                   <div className="space-y-2"><label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Event Title</label><input type="text" value={config.title} onChange={(e) => setConfig({...config, title: e.target.value})} className="w-full p-4 bg-black border border-white/10 text-sm font-black text-white focus:border-red-500 outline-none uppercase rounded-xl" /></div>
                   <div className="space-y-2"><label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Subtitle / Tagline</label><input type="text" value={config.subtitle} onChange={(e) => setConfig({...config, subtitle: e.target.value})} className="w-full p-4 bg-black border border-white/10 text-sm text-white focus:border-red-500 outline-none font-bold rounded-xl" /></div>
                   <div className="space-y-2"><label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Event Date (Text Display)</label><input type="text" value={config.date} onChange={(e) => setConfig({...config, date: e.target.value})} className="w-full p-4 bg-black border border-white/10 text-sm font-bold text-white focus:border-red-500 outline-none uppercase rounded-xl" /></div>
-                  <div className="space-y-2"><label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Countdown Target (ISO)</label><input type="datetime-local" value={config.targetDate?.slice(0,16)} onChange={(e) => setConfig({...config, targetDate: e.target.value + ":00"})} className="w-full p-4 bg-black border border-white/10 text-sm font-mono text-yellow-500 focus:border-red-500 outline-none rounded-xl [color-scheme:dark]" /></div>
+                  <div className="space-y-2"><label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Countdown Target (ISO)</label><input type="datetime-local" value={config.targetDate?.slice(0,16)} onChange={(e) => setConfig({...config, targetDate: e.target.value + ":00"})} className="w-full p-4 bg-black border border-white/10 text-sm font-mono text-zinc-300 focus:border-red-500 outline-none rounded-xl [color-scheme:dark]" /></div>
                   <div className="md:col-span-2 space-y-2"><label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Location / Venue</label><input type="text" value={config.location} onChange={(e) => setConfig({...config, location: e.target.value})} className="w-full p-4 bg-black border border-white/10 text-sm font-bold text-white focus:border-red-500 outline-none uppercase rounded-xl" /></div>
                   <div className="md:col-span-2 space-y-2"><label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">About / Description</label><textarea value={config.aboutText} onChange={(e) => setConfig({...config, aboutText: e.target.value})} className="w-full p-4 bg-black border border-white/10 text-sm text-zinc-300 focus:border-red-500 outline-none rounded-xl" rows="4"></textarea></div>
                 </div>
@@ -1102,7 +1113,7 @@ export default function App() {
                     </div>
 
                     <div className="space-y-1.5 flex-1 flex flex-col">
-                      <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mt-2">Access & Perks</label>
+                      <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mt-2">Access & Perks (Enter for new line)</label>
                       <textarea value={ticket.features} onChange={(e) => handleArrayChange('tickets', ticket.id, 'features', e.target.value)} className="w-full flex-1 p-4 bg-black border border-white/10 text-sm text-zinc-400 focus:border-red-500 outline-none leading-relaxed rounded-xl" rows="6"></textarea>
                     </div>
                   </div>
