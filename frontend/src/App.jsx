@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 
 // ==========================================
-// 1. CONFIG & BACKEND SETUP (FULL CLOUD + RESPONSIVE)
+// 1. CONFIG & BACKEND SETUP
 // ==========================================
 const GAS_URL = "https://script.google.com/macros/s/AKfycbzpKB17ZYwR0SqrGTgAHv4bor-m_WakpmlzxVfKzW9hjQzcROzMcIcO3ZWMTvRk2V55/exec";
 
@@ -71,21 +71,23 @@ export default function App() {
   const [currentView, setCurrentView] = useState('customer');
   const [adminTab, setAdminTab] = useState('dashboard');
   const [isScrolled, setIsScrolled] = useState(false);
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false); // Mobile Sidebar State
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   
   const [config, setConfig] = useState(() => {
-    try { const saved = localStorage.getItem('motoGpProCloudV3'); return saved ? JSON.parse(saved) : defaultConfig; } 
+    try { const saved = localStorage.getItem('motoGpProFinalV1'); return saved ? JSON.parse(saved) : defaultConfig; } 
     catch { return defaultConfig; }
   });
 
   const [registrations, setRegistrations] = useState(() => {
-    try { const saved = localStorage.getItem('motoGpProCloudRegisV3'); return saved ? JSON.parse(saved) : []; } 
+    try { const saved = localStorage.getItem('motoGpProFinalRegisV1'); return saved ? JSON.parse(saved) : []; } 
     catch { return []; }
   });
 
+  const pageViews = useMemo(() => registrations.length > 0 ? registrations.length * 15 + 5600 : 5600, [registrations.length]);
+
   const [selectedSpeaker, setSelectedSpeaker] = useState(null);
   const [ticketModal, setTicketModal] = useState({ isOpen: false, name: '', tier: '', qrUrl: '' });
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false); // สำหรับเปิด Loader ตอนลงทะเบียน
   const [isSyncing, setIsSyncing] = useState(true);
   const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
   const [activeFaq, setActiveFaq] = useState(null);
@@ -104,8 +106,8 @@ export default function App() {
   const scannerInputRef = useRef(null);
   const html5QrCodeRef = useRef(null);
 
-  useEffect(() => { localStorage.setItem('motoGpProCloudV3', JSON.stringify(config)); }, [config]);
-  useEffect(() => { localStorage.setItem('motoGpProCloudRegisV3', JSON.stringify(registrations)); }, [registrations]);
+  useEffect(() => { localStorage.setItem('motoGpProFinalV1', JSON.stringify(config)); }, [config]);
+  useEffect(() => { localStorage.setItem('motoGpProFinalRegisV1', JSON.stringify(registrations)); }, [registrations]);
 
   useEffect(() => {
     if (!window.Html5Qrcode) {
@@ -189,9 +191,10 @@ export default function App() {
   const vat = Math.round(subtotal * 0.07);
   const total = subtotal + vat;
 
+  // 🔥 ฟังก์ชัน Submit การลงทะเบียน (เพิ่มระบบแสดง Loader)
   const handleRegisterSubmit = async (e) => {
     e.preventDefault();
-    setIsSubmitting(true);
+    setIsSubmitting(true); // เปิด Loader
     
     const regId = Date.now();
     const newRegis = {
@@ -212,7 +215,7 @@ export default function App() {
     const qrUrl = `https://quickchart.io/qr?text=${qrData}&size=300&margin=1&dark=${(config.primaryColor || '#DC2626').replace('#','')}`;
     
     setTicketModal({ isOpen: true, name: formData.name, tier: selectedTicket.name, qrUrl });
-    setIsSubmitting(false);
+    setIsSubmitting(false); // ปิด Loader
     setFormData({ name: '', email: '', phone: '', company: '', role: '', ticketId: config?.tickets?.[0]?.id || '' });
   };
 
@@ -264,7 +267,7 @@ export default function App() {
 
     const updatedUser = { ...foundUser, status: 'Checked In' };
     setRegistrations(prev => prev.map(r => r.id === updatedUser.id ? updatedUser : r));
-    setScanResult({ type: 'success', user: updatedUser, message: '✅ ENTRY GRANTED (ยินดีต้อนรับ)' });
+    setScanResult({ type: 'success', user: updatedUser, message: '✅ ENTRY GRANTED (ยืนดีต้อนรับ)' });
 
     try {
       fetch(GAS_URL, {
@@ -275,10 +278,9 @@ export default function App() {
     } catch (err) { console.error(err); }
   };
 
+  // 🔥 ฟังก์ชันปริ้นท์ป้ายชื่อ (Print Badge - No QR Code)
   const printBadge = (user) => {
-    const printWindow = window.open('', '_blank', 'width=400,height=600');
-    const qrData = encodeURIComponent(`MOTO|${user.name}|${user.ticketName}|${user.id}`);
-    const qrUrl = `https://quickchart.io/qr?text=${qrData}&size=200&margin=0&dark=${(config.primaryColor || '#DC2626').replace('#','')}`;
+    const printWindow = window.open('', '_blank', 'width=800,height=600');
     
     const html = `
       <html>
@@ -288,17 +290,18 @@ export default function App() {
           <style>
             body { font-family: 'Kanit', 'Inter', sans-serif; margin: 0; padding: 20px; display: flex; justify-content: center; align-items: center; background: #e4e4e7; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
             .badge { width: 100mm; height: 140mm; background: #18181b; border-radius: 20px; overflow: hidden; position: relative; display: flex; flex-direction: column; color: #fff; box-shadow: 0 10px 30px rgba(0,0,0,0.2); border: 2px solid #3f3f46; }
-            .header { background: ${config.primaryColor || '#DC2626'}; color: #fff; padding: 20px 15px; text-align: center; text-transform: uppercase; display: flex; flex-direction: column; align-items: center; justify-content: center; border-bottom: 4px solid ${config.secondaryColor || '#FACC15'}; }
-            .header h2 { margin: 0; font-size: 22px; font-weight: 900; letter-spacing: 1px; font-style: italic; }
-            .header p { margin: 5px 0 0; font-size: 10px; font-weight: 700; letter-spacing: 2px; opacity: 0.9; }
-            .content { padding: 25px 20px; flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; background-image: radial-gradient(rgba(255,255,255,0.05) 1px, transparent 1px); background-size: 10px 10px; }
-            .qr-box { background: #fff; padding: 15px; border-radius: 16px; margin-bottom: 25px; box-shadow: 0 10px 20px rgba(0,0,0,0.5); }
-            .qr-box img { width: 140px; height: 140px; display: block; }
-            .name { font-size: 26px; font-weight: 900; color: #fff; text-transform: uppercase; margin-bottom: 5px; text-align: center; line-height: 1.1; }
-            .team { font-size: 14px; font-weight: 700; color: #a1a1aa; text-transform: uppercase; text-align: center; letter-spacing: 1px; }
-            .footer { background: #000; padding: 20px; text-align: center; }
-            .ticket { font-size: 18px; font-weight: 900; color: ${config.secondaryColor || '#FACC15'}; text-transform: uppercase; letter-spacing: 2px; border: 2px solid ${config.secondaryColor || '#FACC15'}; display: inline-block; padding: 8px 24px; border-radius: 50px; }
-            .id-tag { font-family: monospace; font-size: 10px; color: #52525b; margin-top: 15px; }
+            .header { background: ${config.primaryColor || '#DC2626'}; color: #fff; padding: 25px 15px; text-align: center; text-transform: uppercase; display: flex; flex-direction: column; align-items: center; justify-content: center; border-bottom: 4px solid ${config.secondaryColor || '#FACC15'}; }
+            .header h2 { margin: 0; font-size: 26px; font-weight: 900; letter-spacing: 1px; font-style: italic; }
+            .header p { margin: 5px 0 0; font-size: 12px; font-weight: 700; letter-spacing: 2px; opacity: 0.9; }
+            .content { padding: 40px 20px; flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; background-image: radial-gradient(rgba(255,255,255,0.05) 1px, transparent 1px); background-size: 10px 10px; }
+            
+            /* ขยายชื่อนักแข่งให้ใหญ่ขึ้น ตรงกลาง */
+            .name { font-size: 42px; font-weight: 900; color: #fff; text-transform: uppercase; margin-bottom: 15px; text-align: center; line-height: 1.1; }
+            .team { font-size: 18px; font-weight: 700; color: #a1a1aa; text-transform: uppercase; text-align: center; letter-spacing: 1px; margin-bottom: 30px; }
+            
+            .footer { background: #000; padding: 30px 20px; text-align: center; border-top: 2px solid #3f3f46; }
+            .ticket { font-size: 24px; font-weight: 900; color: ${config.secondaryColor || '#FACC15'}; text-transform: uppercase; letter-spacing: 2px; display: inline-block; padding: 12px 30px; border-radius: 50px; border: 3px solid ${config.secondaryColor || '#FACC15'}; }
+            
             @media print {
               body { background: #fff; padding: 0; }
               .badge { box-shadow: none; border: 1px solid #ddd; border-radius: 0; width: 100vw; height: 100vh; }
@@ -312,15 +315,11 @@ export default function App() {
               <p>OFFICIAL ENTRY PASS</p>
             </div>
             <div class="content">
-              <div class="qr-box">
-                <img src="${qrUrl}" alt="QR Code" />
-              </div>
               <div class="name">${user.name}</div>
               <div class="team">${user.company || 'GUEST'}</div>
             </div>
             <div class="footer">
               <div class="ticket">${user.ticketName || 'ACCESS PASS'}</div>
-              <div class="id-tag">ID: ${user.id}</div>
             </div>
           </div>
           <script>
@@ -387,7 +386,7 @@ export default function App() {
   const topTicket = [...ticketStats].sort((a,b) => b.count - a.count)[0];
 
   // ==========================================
-  // CSS: PRO MOTORCYCLE RACING THEME (RESPONSIVE)
+  // CSS: PRO MOTORCYCLE RACING THEME
   // ==========================================
   const customerCss = `
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Kanit:wght@300;400;500;600;700;800;900&display=swap');
@@ -492,6 +491,7 @@ export default function App() {
     .faq-a { font-size: 15px; color: #a1a1aa; margin-top: 15px; line-height: 1.7; display: none; padding-right: 20px; }
     .faq-item.active .faq-a { display: block; animation: fadeDown 0.3s ease; }
     .faq-item.active .faq-q { color: var(--primary); }
+    @keyframes fadeDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
 
     .form-box-wrapper { filter: drop-shadow(0 20px 40px rgba(0,0,0,0.4)); max-width: 850px; margin: 0 auto; }
     .form-box { padding: 50px 40px; background: #18181b; border-radius: 32px; border-top: 6px solid var(--primary); }
@@ -509,29 +509,17 @@ export default function App() {
       .hero-content { padding-top: 20px; }
       .sec-title { font-size: 32px; }
       .section { padding: 60px 0; }
-      
-      /* Grid adjustments */
       .grid-4, .grid-3 { grid-template-columns: 1fr; gap: 20px; }
-      
-      /* Form adjustments */
       .grid-2 { grid-template-columns: 1fr !important; gap: 15px !important; }
       .form-box { padding: 30px 20px; }
-      
-      /* Timeline mobile fix */
       .time-card { flex-direction: column; align-items: flex-start; gap: 15px; padding: 25px 20px; }
       .time-left { border-right: none; border-bottom: 1px solid var(--border); padding-bottom: 15px; text-align: left; width: 100%; }
       .timeline-wrap::before { left: 20px; }
       .time-dot { left: -40px; top: 40px; }
       .timeline-wrap { padding-left: 40px; }
-      
-      /* Stats banner */
       .grid-4 > div { padding: 15px 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
       .grid-4 > div:last-child { border-bottom: none; }
-      
-      /* Navbar */
-      .nav-wrap .btn { display: none; /* Hide button on very small screens to save space */ }
-      
-      /* Checkout summary box */
+      .nav-wrap .btn { display: none; }
       .form-box > form > div:last-child { flex-direction: column; align-items: stretch; text-align: center; gap: 20px; padding: 20px; }
       .form-box > form > div:last-child > div { text-align: center !important; justify-content: center; width: 100%; }
       .form-box > form > div:last-child button { width: 100%; }
@@ -542,6 +530,22 @@ export default function App() {
     return (
       <>
         <style>{customerCss}</style>
+        
+        {/* 🔥 Loader ตอนลงทะเบียน */}
+        {isSubmitting && (
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(10px)', zIndex: 9999, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#fff' }}>
+            <div style={{ width: '80px', height: '80px', border: '6px solid rgba(255,255,255,0.1)', borderTopColor: 'var(--primary)', borderRadius: '50%', animation: 'spin 1s linear infinite', marginBottom: '25px' }}></div>
+            <h2 style={{ fontSize: '24px', fontWeight: 900, fontStyle: 'italic', textTransform: 'uppercase', letterSpacing: '2px', animation: 'pulse 2s infinite' }}>Processing Entry...</h2>
+            <p style={{ color: '#a1a1aa', fontSize: '14px', marginTop: '10px', fontFamily: 'monospace' }}>Securely transmitting data to paddock control</p>
+            <style>
+              {`
+                @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+                @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+              `}
+            </style>
+          </div>
+        )}
+
         <div className="track-bg"></div>
 
         <nav className={`navbar ${isScrolled ? 'scrolled' : ''}`}>
@@ -592,7 +596,6 @@ export default function App() {
           </div>
         </section>
 
-        {/* Stats Banner */}
         <div style={{ background: '#0f0f11', padding: '40px 0', borderBottom: '1px solid var(--border)' }}>
           <div className="container grid-4" style={{ textAlign: 'center' }}>
             <div><div style={{ fontSize: '42px', fontWeight: 900, color: '#fff' }}>350<span style={{fontSize:'16px', color:'var(--primary)'}}>KM/H</span></div><div style={{ color: 'var(--text-muted)', fontSize: '12px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '2px' }}>Top Speed</div></div>
@@ -679,7 +682,6 @@ export default function App() {
           </div>
         </section>
 
-        {/* Marquee Sponsors */}
         <div style={{ backgroundImage: `url(${config.sponsorBg})`, backgroundSize: 'cover', backgroundAttachment: 'fixed', position: 'relative', padding: '80px 0', overflow: 'hidden', borderTop: '1px solid rgba(255,255,255,0.1)', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
           <div style={{ position: 'absolute', inset: 0, background: 'rgba(15, 15, 17, 0.90)' }}></div>
           <div className="container text-center reveal" style={{ position: 'relative', zIndex: 1, marginBottom: '40px' }}>
@@ -822,15 +824,11 @@ export default function App() {
               <h2 style={{ marginBottom: '10px', color: '#fff', fontSize: '24px', fontWeight: 900, textTransform: 'uppercase' }}>Registration Success!</h2>
               <p style={{ color: '#a1a1aa', fontSize: '13px', marginBottom: '25px', fontWeight: 600 }}>ระบบส่ง E-TICKET และ PADDOCK PASS ไปยังอีเมลแล้ว</p>
               
-              <div style={{ background: '#fff', padding: '15px', display: 'inline-block', margin: '0 auto 25px', borderRadius: '20px', boxShadow: '0 15px 30px rgba(0,0,0,0.5)' }}><img src={ticketModal.qrUrl} alt="QR" width="150" style={{ display: 'block' }} /></div>
-              
-              <div style={{ background: '#0f0f11', padding: '15px', marginBottom: '25px', border: '1px solid var(--border)', textAlign: 'left', borderRadius: '16px' }}>
-                <div>
-                  <div style={{ fontSize: '10px', fontWeight: 900, color: '#a1a1aa', textTransform: 'uppercase', letterSpacing: '1px' }}>Name</div>
-                  <div style={{ fontSize: '16px', fontWeight: 900, color: '#fff', marginBottom: '8px' }}>{ticketModal.name}</div>
-                  <div style={{ fontSize: '10px', fontWeight: 900, color: '#a1a1aa', textTransform: 'uppercase', letterSpacing: '1px' }}>Access Level</div>
-                  <div style={{ fontSize: '14px', color: 'var(--primary)', fontWeight: 900, marginTop: '2px', textTransform: 'uppercase' }}>{ticketModal.tier || 'UNKNOWN PASS'}</div>
-                </div>
+              <div style={{ background: '#0f0f11', padding: '20px', marginBottom: '25px', border: '1px solid var(--border)', textAlign: 'center', borderRadius: '16px' }}>
+                <div style={{ fontSize: '10px', fontWeight: 900, color: '#a1a1aa', textTransform: 'uppercase', letterSpacing: '1px' }}>Name</div>
+                <div style={{ fontSize: '20px', fontWeight: 900, color: '#fff', marginBottom: '10px' }}>{ticketModal.name}</div>
+                <div style={{ fontSize: '10px', fontWeight: 900, color: '#a1a1aa', textTransform: 'uppercase', letterSpacing: '1px' }}>Access Level</div>
+                <div style={{ fontSize: '16px', color: 'var(--primary)', fontWeight: 900, marginTop: '2px', textTransform: 'uppercase' }}>{ticketModal.tier || 'UNKNOWN PASS'}</div>
               </div>
               
               <button className="btn btn-primary" style={{ width: '100%', padding: '15px', fontSize: '15px' }} onClick={() => setTicketModal({ isOpen: false, name: '', tier: '', qrUrl: '' })}>CLOSE WINDOW</button>
@@ -925,27 +923,27 @@ export default function App() {
                 </button>
               </div>
 
-              {/* Bento Grid Stats */}
+              {/* Bento Grid Stats - Removed 'truncate' to prevent cutting off large numbers/names */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
                 <div className="bg-[#0a0a0a] border border-white/5 p-6 md:p-8 rounded-3xl relative overflow-hidden group hover:border-red-500/50 transition-colors">
                   <div className="w-10 h-10 md:w-12 md:h-12 bg-red-500/10 text-red-500 flex items-center justify-center rounded-xl md:rounded-2xl text-xl md:text-2xl mb-4 md:mb-6">👥</div>
                   <p className="text-[9px] md:text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-1 md:mb-2">Total Entries</p>
-                  <div className="text-4xl md:text-5xl font-black text-white">{registrations.length}</div>
+                  <div className="text-4xl md:text-5xl font-black text-white break-words">{registrations.length}</div>
                 </div>
                 <div className="bg-[#0a0a0a] border border-white/5 p-6 md:p-8 rounded-3xl relative overflow-hidden group hover:border-emerald-500/50 transition-colors">
                   <div className="w-10 h-10 md:w-12 md:h-12 bg-emerald-500/10 text-emerald-500 flex items-center justify-center rounded-xl md:rounded-2xl text-xl md:text-2xl mb-4 md:mb-6">💰</div>
                   <p className="text-[9px] md:text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-1 md:mb-2">Net Revenue</p>
-                  <div className="text-3xl md:text-4xl font-black text-white font-mono break-words leading-tight">฿{totalRevenueNum.toLocaleString()}</div>
+                  <div className="text-3xl md:text-4xl font-black text-white font-mono break-words">฿{totalRevenueNum.toLocaleString()}</div>
                 </div>
                 <div className="bg-[#0a0a0a] border border-white/5 p-6 md:p-8 rounded-3xl relative overflow-hidden group hover:border-yellow-500/50 transition-colors">
                   <div className="w-10 h-10 md:w-12 md:h-12 bg-yellow-500/10 text-yellow-500 flex items-center justify-center rounded-xl md:rounded-2xl text-xl md:text-2xl mb-4 md:mb-6">🏆</div>
                   <p className="text-[9px] md:text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-1 md:mb-2">Top Category</p>
-                  <div className="text-xl md:text-2xl font-black text-white mt-1 uppercase break-words">{topTicket?.name || '-'}</div>
+                  <div className="text-xl md:text-2xl font-black text-white mt-1 uppercase break-words leading-tight">{topTicket?.name || '-'}</div>
                 </div>
                 <div className="bg-[#0a0a0a] border border-white/5 p-6 md:p-8 rounded-3xl relative overflow-hidden group hover:border-blue-500/50 transition-colors">
                   <div className="w-10 h-10 md:w-12 md:h-12 bg-blue-500/10 text-blue-500 flex items-center justify-center rounded-xl md:rounded-2xl text-xl md:text-2xl mb-4 md:mb-6">📊</div>
                   <p className="text-[9px] md:text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-1 md:mb-2">Avg. Value</p>
-                  <div className="text-3xl md:text-4xl font-black text-white font-mono break-words leading-tight">฿{avgOrderValue.toLocaleString()}</div>
+                  <div className="text-3xl md:text-4xl font-black text-white font-mono break-words">฿{avgOrderValue.toLocaleString()}</div>
                 </div>
               </div>
 
@@ -956,7 +954,7 @@ export default function App() {
                     {ticketStats.map((t, i) => (
                       <div key={i}>
                         <div className="flex justify-between text-[10px] md:text-xs font-bold mb-2 uppercase">
-                          <span className="text-zinc-400 truncate pr-2">{t.name}</span>
+                          <span className="text-zinc-400 break-words pr-2">{t.name}</span>
                           <span className="text-white flex-shrink-0">{t.count} <span className="text-zinc-600 font-normal font-mono">({t.percent}%)</span></span>
                         </div>
                         <div className="w-full h-2 bg-white/5 overflow-hidden rounded-full">
@@ -981,16 +979,16 @@ export default function App() {
                       {registrations.slice(0, 5).map(r => (
                         <div key={r.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-white/5 border border-white/5 hover:border-white/10 transition-colors rounded-2xl gap-3 sm:gap-0 min-w-[300px]">
                           <div className="flex items-center gap-3 md:gap-4">
-                            <div className="font-mono text-zinc-600 text-[10px] md:text-xs w-12 md:w-16 truncate">{r.id.toString().slice(-6)}</div>
+                            <div className="font-mono text-zinc-600 text-[10px] md:text-xs w-12 md:w-16 flex-shrink-0">{r.id.toString().slice(-6)}</div>
                             <div>
-                              <div className="font-bold text-white text-xs md:text-sm uppercase truncate max-w-[150px] md:max-w-xs">{r.name}</div>
-                              <div className="text-[9px] md:text-[10px] text-zinc-500 font-mono uppercase tracking-wider truncate max-w-[150px] md:max-w-xs">{r.company || r.email}</div>
+                              <div className="font-bold text-white text-xs md:text-sm uppercase break-words max-w-[150px] md:max-w-xs">{r.name}</div>
+                              <div className="text-[9px] md:text-[10px] text-zinc-500 font-mono uppercase tracking-wider break-words max-w-[150px] md:max-w-xs">{r.company || r.email}</div>
                             </div>
                           </div>
                           <div className="flex sm:justify-end items-center gap-3 md:gap-4 ml-14 sm:ml-0">
-                            {r.status === 'Checked In' && <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_#10b981]"></span>}
-                            <span className="inline-block px-2 py-1 text-[8px] md:text-[9px] font-black bg-black text-white uppercase tracking-widest border border-white/10 rounded-full truncate max-w-[100px]">{r.ticketName || 'UNKNOWN PASS'}</span>
-                            <div className="text-xs md:text-sm font-black text-emerald-400 font-mono w-16 md:w-24 text-right truncate">฿{Number(r.totalPaid).toLocaleString()}</div>
+                            {r.status === 'Checked In' && <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_#10b981] flex-shrink-0"></span>}
+                            <span className="inline-block px-2 py-1 text-[8px] md:text-[9px] font-black bg-black text-white uppercase tracking-widest border border-white/10 rounded-full break-words text-center max-w-[100px] md:max-w-[120px]">{r.ticketName || 'UNKNOWN PASS'}</span>
+                            <div className="text-xs md:text-sm font-black text-emerald-400 font-mono w-16 md:w-24 text-right flex-shrink-0">฿{Number(r.totalPaid).toLocaleString()}</div>
                           </div>
                         </div>
                       ))}
@@ -1036,12 +1034,12 @@ export default function App() {
                            <div className="text-lg md:text-xl font-black text-white uppercase mb-4 break-words">{scanResult.user.name}</div>
                            
                            <div className="text-[9px] md:text-[10px] text-zinc-500 uppercase tracking-widest mb-1">Pass Level</div>
-                           <div className={`text-xs md:text-sm font-black uppercase px-3 py-1 inline-block rounded-full border ${scanResult.type === 'success' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' : 'bg-yellow-500/10 text-yellow-400 border-yellow-500/30'}`}>{scanResult.user.ticketName || 'UNKNOWN PASS'}</div>
+                           <div className={`text-xs md:text-sm font-black uppercase px-3 py-1 inline-block rounded-full border break-words ${scanResult.type === 'success' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' : 'bg-yellow-500/10 text-yellow-400 border-yellow-500/30'}`}>{scanResult.user.ticketName || 'UNKNOWN PASS'}</div>
                            
                            <div className="text-[9px] md:text-[10px] text-zinc-500 uppercase tracking-widest mt-4 mb-1">Contact</div>
                            <div className="text-xs md:text-sm text-zinc-300 font-mono break-all">{scanResult.user.phone || '-'}</div>
 
-                           {/* ปุ่ม Print Badge */}
+                           {/* ปุ่ม Print Badge เมื่อสแกนผ่าน */}
                            <button onClick={() => printBadge(scanResult.user)} className="mt-6 w-full py-3 bg-blue-600 hover:bg-blue-500 text-white text-[10px] md:text-xs font-black uppercase tracking-widest rounded-xl transition-all shadow-[0_0_15px_rgba(37,130,246,0.3)]">
                              🖨️ PRINT BADGE
                            </button>
@@ -1075,7 +1073,7 @@ export default function App() {
                    <div className="text-center py-20 text-zinc-600 text-xs md:text-sm font-mono uppercase">Awaiting Entries...</div>
                  ) : (
                    <div className="overflow-x-auto">
-                     <table className="w-full text-left border-collapse min-w-[700px]">
+                     <table className="w-full text-left border-collapse min-w-[750px]">
                        <thead>
                          <tr className="bg-white/5 border-b border-white/5 text-[9px] md:text-[10px] font-black text-zinc-500 uppercase tracking-widest">
                            <th className="py-4 px-4 md:py-5 md:px-8">Rider / Crew Info</th>
@@ -1098,7 +1096,14 @@ export default function App() {
                                    <input className="w-full p-2 md:p-3 bg-black border border-white/10 text-[10px] md:text-xs text-zinc-300 font-mono rounded-xl focus:border-red-500 outline-none" value={editUserForm.email} onChange={e => setEditUserForm({...editUserForm, email: e.target.value})} placeholder="Email" />
                                    <input className="w-full p-2 md:p-3 bg-black border border-white/10 text-[10px] md:text-xs text-zinc-300 font-mono rounded-xl focus:border-red-500 outline-none" value={editUserForm.phone} onChange={e => setEditUserForm({...editUserForm, phone: e.target.value})} placeholder="Phone" />
                                  </td>
-                                 <td className="py-4 px-4 md:px-8"><span className="px-2 md:px-4 py-1 md:py-1.5 text-[8px] md:text-[10px] font-black bg-white/5 text-zinc-300 uppercase rounded-full border border-white/10">{r.ticketName || 'UNKNOWN PASS'}</span></td>
+                                 <td className="py-4 px-4 md:px-8">
+                                    <select className="w-full p-2 md:p-3 bg-black border border-white/10 text-[10px] md:text-xs text-white uppercase rounded-xl focus:border-red-500 outline-none" value={editUserForm.ticketName || ''} onChange={e => setEditUserForm({...editUserForm, ticketName: e.target.value})}>
+                                      <option value="">-- เลือกบัตร --</option>
+                                      {config.tickets?.map(t => (
+                                        <option key={t.id} value={t.name}>{t.name}</option>
+                                      ))}
+                                    </select>
+                                 </td>
                                  <td className="py-4 px-4 md:px-8 text-center">
                                     <select className="bg-black border border-white/10 text-[10px] md:text-xs text-white p-1.5 md:p-2 rounded-lg outline-none uppercase font-bold" value={editUserForm.status || 'Pending'} onChange={e => setEditUserForm({...editUserForm, status: e.target.value})}>
                                       <option value="Pending">Pending</option>
@@ -1114,14 +1119,14 @@ export default function App() {
                                <>
                                  <td className="py-4 md:py-6 px-4 md:px-8 max-w-[200px]">
                                    <div className="font-black text-white text-xs md:text-sm uppercase break-words">{r.name}</div>
-                                   <div className="text-[9px] md:text-[10px] text-zinc-500 font-bold mt-1 uppercase tracking-wider truncate">{r.company || '-'}</div>
+                                   <div className="text-[9px] md:text-[10px] text-zinc-500 font-bold mt-1 uppercase tracking-wider break-words">{r.company || '-'}</div>
                                  </td>
-                                 <td className="py-4 md:py-6 px-4 md:px-8 max-w-[150px]">
-                                   <div className="text-zinc-300 font-mono text-[10px] md:text-xs truncate">{r.email}</div>
+                                 <td className="py-4 md:py-6 px-4 md:px-8 max-w-[180px]">
+                                   <div className="text-zinc-300 font-mono text-[10px] md:text-xs break-all">{r.email}</div>
                                    <div className="text-[9px] md:text-[10px] text-zinc-600 mt-1 font-mono">{r.phone}</div>
                                  </td>
                                  <td className="py-4 md:py-6 px-4 md:px-8 max-w-[150px]">
-                                   <span className="px-2 md:px-4 py-1 md:py-1.5 text-[8px] md:text-[9px] font-black bg-black text-zinc-300 border border-white/10 uppercase tracking-widest rounded-full break-words">{r.ticketName || 'UNKNOWN PASS'}</span>
+                                   <span className="px-2 md:px-4 py-1 md:py-1.5 text-[8px] md:text-[9px] font-black bg-black text-zinc-300 border border-white/10 uppercase tracking-widest rounded-full break-words inline-block text-center">{r.ticketName || 'UNKNOWN PASS'}</span>
                                  </td>
                                  <td className="py-4 md:py-6 px-4 md:px-8 text-center">
                                     {r.status === 'Checked In' ? (
@@ -1131,9 +1136,9 @@ export default function App() {
                                     )}
                                  </td>
                                  <td className="py-4 md:py-6 px-4 md:px-8 text-center space-x-1 md:space-x-2 whitespace-nowrap">
-                                   <button onClick={() => printBadge(r)} className="px-2 md:px-4 py-1 md:py-1.5 text-blue-400 hover:text-white bg-black border border-white/10 font-black text-[8px] md:text-[10px] uppercase tracking-wider rounded-full transition-colors" title="Print Badge">Print</button>
-                                   <button onClick={() => startEditUser(r)} className="px-2 md:px-4 py-1 md:py-1.5 text-zinc-400 hover:text-white bg-black border border-white/10 font-black text-[8px] md:text-[10px] uppercase tracking-wider rounded-full transition-colors" title="Edit">Edit</button>
-                                   <button onClick={() => deleteUser(r.id)} className="px-2 md:px-4 py-1 md:py-1.5 text-rose-500 hover:text-white bg-black border border-white/10 font-black text-[8px] md:text-[10px] uppercase tracking-wider rounded-full transition-colors" title="Delete">Del</button>
+                                   <button onClick={() => printBadge(r)} className="px-2 md:px-3 py-1 md:py-1.5 text-blue-400 hover:text-white bg-black border border-white/10 font-black text-[8px] md:text-[10px] uppercase tracking-wider rounded-full transition-colors" title="Print Badge">Print</button>
+                                   <button onClick={() => startEditUser(r)} className="px-2 md:px-3 py-1 md:py-1.5 text-zinc-400 hover:text-white bg-black border border-white/10 font-black text-[8px] md:text-[10px] uppercase tracking-wider rounded-full transition-colors" title="Edit">Edit</button>
+                                   <button onClick={() => deleteUser(r.id)} className="px-2 md:px-3 py-1 md:py-1.5 text-rose-500 hover:text-white bg-black border border-white/10 font-black text-[8px] md:text-[10px] uppercase tracking-wider rounded-full transition-colors" title="Delete">Del</button>
                                  </td>
                                </>
                              )}
