@@ -223,7 +223,7 @@ export default function App() {
     }
   };
 
-  const addSpeaker = () => setConfig(prev => ({ ...prev, speakers: [...(prev.speakers || []), { id: Date.now(), name: "ชื่อนักบิด/ทีมงาน", role: "สังกัดทีม", tag: "CATEGORY", color: "#DC2626", img: "https://images.unsplash.com/photo-1541344999736-83eca272f6fc?q=80&w=400&auto=format&fit=crop", desc: "ประวัติผลงาน" }] }));
+  const addSpeaker = () => setConfig(prev => ({ ...prev, speakers: [...(prev.speakers || []), { id: Date.now(), name: "ชื่อนักบิด/ทีมงาน", role: "สังกัดทีม", tag: "CATEGORY", color: "#DC2626", img: "https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png", desc: "ประวัติผลงาน" }] }));
   const addSchedule = () => setConfig(prev => ({ ...prev, schedule: [...(prev.schedule || []), { id: Date.now(), time: "00:00", title: "กิจกรรมบนแทร็ก", desc: "รายละเอียดเนื้อหา", tag: "INFO", color: "#FACC15" }] }));
   const addSponsor = () => setConfig(prev => ({ ...prev, sponsors: [...(prev.sponsors || []), { id: Date.now(), name: "แบรนด์สปอนเซอร์" }] }));
   const addFaq = () => setConfig(prev => ({ ...prev, faqs: [...(prev.faqs || []), { id: Date.now(), q: "คำถาม?", a: "คำตอบ" }] }));
