@@ -4,7 +4,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 // 1. CONFIG & BACKEND SETUP (FULL CLOUD SYNC)
 // ==========================================
 // ลิงก์ API ของคุณ
-const GAS_URL = "https://script.google.com/macros/s/AKfycbwp4zNnsF920z-lqxnKtzz6uv-dES-MwxaNfFfsgw4jAC2DMz8azjJRetvfGPFg4aun/exec";
+const GAS_URL = "https://script.google.com/macros/s/AKfycbwuka4zKXz37ATCCQYuwX_hBj6Z296A42l7H4TZ_n5CG9RzvJ2u73bt2QucAId6ic8N/exec";
 
 const defaultConfig = {
   title: "BKK GRAND PRIX",
@@ -29,10 +29,10 @@ const defaultConfig = {
   videoDesc: "สัมผัสความเร็วผ่านมุมมองกล้อง On-Board ของเหล่านักบิดระดับพระกาฬ และช็อตแซงทางโค้งสุดเดือดจากฤดูกาลล่าสุด",
 
   speakers: [
-    { id: 1, name: "ฟรานเชสโก บัญญาญ่า", role: "World Champion Rider", tag: "FACTORY RIDER", color: "#DC2626", img: "https://images.unsplash.com/photo-1568772585407-9361f9bf3c87?q=80&w=400&auto=format&fit=crop", desc: "แชมป์โลก 2 สมัยซ้อน จะมาแชร์ศาสตร์แห่งความเร็ว การควบคุมคันเร่ง (Throttle Control) และการอ่านไลน์สนาม" },
-    { id: 2, name: "มาร์ค มาร์เกซ", role: "8-Time World Champion", tag: "THE ALIEN", color: "#EF4444", img: "https://images.unsplash.com/photo-1610645601550-cece80e15263?q=80&w=400&auto=format&fit=crop", desc: "เจ้าแห่งแทร็กผู้ไม่เคยยอมแพ้ แชร์มุมมองการขับขี่แบบดุดันทะลุขีดจำกัด และการกอบกู้ฟอร์มหลังอาการบาดเจ็บ" },
-    { id: 3, name: "ฟาบิโอ กวาร์ตาราโร่", role: "El Diablo - Top Rider", tag: "PRO RIDER", color: "#3B82F6", img: "https://images.unsplash.com/photo-1596328546171-77e37b5fefea?q=80&w=400&auto=format&fit=crop", desc: "นักบิดดาวรุ่งเจ้าของสไตล์การเข้าโค้งแบบสมูทขั้นสุด พูดคุยเรื่องความสำคัญของ Corner Speed" },
-    { id: 4, name: "จอร์จ มาร์ติน", role: "The Martinator", tag: "SPRINT KING", color: "#8B5CF6", img: "https://images.unsplash.com/photo-1558981359-219d6364c9c8?q=80&w=400&auto=format&fit=crop", desc: "ราชันย์แห่ง Sprint Race เล่าถึงการเค้นสมรรถนะเครื่องยนต์และการบริหารยางในระยะสั้นให้ทรงประสิทธิภาพสูงสุด" }
+    { id: 1, name: "ฟรานเชสโก บัญญาญ่า", role: "World Champion Rider", tag: "FACTORY RIDER", color: "#DC2626", img: "https://www.motowish.com/wp-content/uploads/2023/09/Francesco-Bagnaia-1.jpg", desc: "แชมป์โลก 2 สมัยซ้อน จะมาแชร์ศาสตร์แห่งความเร็ว การควบคุมคันเร่ง (Throttle Control) และการอ่านไลน์สนาม" },
+    { id: 2, name: "มาร์ค มาร์เกซ", role: "8-Time World Champion", tag: "THE ALIEN", color: "#EF4444", img: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRs3Wzzk-N_Y5J05rJZI3ZIX-3p0Gn7xfPaGcngUIId28tziiFyNl19f7Q&s=10", desc: "เจ้าแห่งแทร็กผู้ไม่เคยยอมแพ้ แชร์มุมมองการขับขี่แบบดุดันทะลุขีดจำกัด และการกอบกู้ฟอร์มหลังอาการบาดเจ็บ" },
+    { id: 3, name: "ฟาบิโอ กวาร์ตาราโร่", role: "El Diablo - Top Rider", tag: "PRO RIDER", color: "#3B82F6", img: "https://image.makewebcdn.com/makeweb/m_1920x0/oEzbICNVY/A119PRO/FQ1.png", desc: "นักบิดดาวรุ่งเจ้าของสไตล์การเข้าโค้งแบบสมูทขั้นสุด พูดคุยเรื่องความสำคัญของ Corner Speed" },
+    { id: 4, name: "จอร์จ มาร์ติน", role: "The Martinator", tag: "SPRINT KING", color: "#8B5CF6", img: "https://ticketsgp.vshcdn.net/uploads/images/752/motogp-jorge-martin-pramac-motogpaustria-motogpitaly-motogpassen-motogpsilverstone-motogpmugello-motogpjerez-motogpsachsenring.jpg", desc: "ราชันย์แห่ง Sprint Race เล่าถึงการเค้นสมรรถนะเครื่องยนต์และการบริหารยางในระยะสั้นให้ทรงประสิทธิภาพสูงสุด" }
   ],
   
   sponsors: [
