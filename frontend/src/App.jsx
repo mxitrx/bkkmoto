@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
 
 // ==========================================
-// 1. CONFIG & BACKEND SETUP (SMOOTH MOTOGP THEME)
+// 1. CONFIG & BACKEND SETUP (FULL CLOUD SYNC)
 // ==========================================
-const GAS_URL = "https://script.google.com/macros/s/AKfycbwXflgZA8VjIm19RhZoCyEKQix7venO3kyzH01Pbj79ktfAepxh293gFlwDViX3Q5o8/exec";
+// ลิงก์ API ของคุณ
+const GAS_URL = "https://script.google.com/macros/s/AKfycbwp4zNnsF920z-lqxnKtzz6uv-dES-MwxaNfFfsgw4jAC2DMz8azjJRetvfGPFg4aun/exec";
 
 const defaultConfig = {
   title: "BKK GRAND PRIX",
@@ -18,13 +19,13 @@ const defaultConfig = {
   primaryColor: "#DC2626", 
   secondaryColor: "#FACC15", 
   
-  heroBg: "https://images.unsplash.com/photo-1525543907410-b2562b6796d6?q=80&w=2000&auto=format&fit=crop", 
-  marqueeBg: "https://images.unsplash.com/photo-1596328546171-77e37b5fefea?q=80&w=2000&auto=format&fit=crop", 
-  sponsorBg: "https://images.unsplash.com/photo-1620023605655-46b0d95d10a2?q=80&w=2000&auto=format&fit=crop", 
+  heroBg: "https://images.alphacoders.com/130/thumb-1920-1308978.jpeg", 
+  marqueeBg: "https://static.vecteezy.com/system/resources/thumbnails/070/170/919/small/an-empty-track-with-a-long-exposure-free-photo.jpeg", 
+  sponsorBg: "https://static.vecteezy.com/system/resources/thumbnails/070/170/919/small/an-empty-track-with-a-long-exposure-free-photo.jpeg", 
 
   showVideo: true,
   videoTitle: "RACE HIGHLIGHTS & ON-BOARD",
-  videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ", 
+  videoUrl: "https://www.youtube.com/watch?v=NF-x5UD_pRE&t=457s&pp=ygUGbW90b2dw", 
   videoDesc: "สัมผัสความเร็วผ่านมุมมองกล้อง On-Board ของเหล่านักบิดระดับพระกาฬ และช็อตแซงทางโค้งสุดเดือดจากฤดูกาลล่าสุด",
 
   speakers: [
@@ -73,12 +74,12 @@ export default function App() {
   const [isScrolled, setIsScrolled] = useState(false);
   
   const [config, setConfig] = useState(() => {
-    try { const saved = localStorage.getItem('motoGpProPremiumV2'); return saved ? JSON.parse(saved) : defaultConfig; } 
+    try { const saved = localStorage.getItem('motoGpProCloudV3'); return saved ? JSON.parse(saved) : defaultConfig; } 
     catch { return defaultConfig; }
   });
 
   const [registrations, setRegistrations] = useState(() => {
-    try { const saved = localStorage.getItem('motoGpProPremiumRegisV2'); return saved ? JSON.parse(saved) : []; } 
+    try { const saved = localStorage.getItem('motoGpProCloudRegisV3'); return saved ? JSON.parse(saved) : []; } 
     catch { return []; }
   });
 
@@ -98,8 +99,8 @@ export default function App() {
   const [editingUserId, setEditingUserId] = useState(null);
   const [editUserForm, setEditUserForm] = useState({});
 
-  useEffect(() => { localStorage.setItem('motoGpProPremiumV2', JSON.stringify(config)); }, [config]);
-  useEffect(() => { localStorage.setItem('motoGpProPremiumRegisV2', JSON.stringify(registrations)); }, [registrations]);
+  useEffect(() => { localStorage.setItem('motoGpProCloudV3', JSON.stringify(config)); }, [config]);
+  useEffect(() => { localStorage.setItem('motoGpProCloudRegisV3', JSON.stringify(registrations)); }, [registrations]);
 
   useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 50);
@@ -131,13 +132,12 @@ export default function App() {
     return () => clearInterval(timer);
   }, [config.targetDate]);
 
+  // ซิงค์ข้อมูลอัตโนมัติเมื่อโหลดหน้าเว็บครั้งแรก (เพื่อให้ผู้เข้าชมจาก Vercel ได้ข้อมูลล่าสุด)
   useEffect(() => {
-    if (currentView === 'admin') {
-      syncWithGoogleSheet(true);
-      const interval = setInterval(() => { syncWithGoogleSheet(true); }, 10000);
-      return () => clearInterval(interval);
-    }
-  }, [currentView]);
+    syncWithGoogleSheet(true);
+    const interval = setInterval(() => { syncWithGoogleSheet(true); }, 15000);
+    return () => clearInterval(interval);
+  }, []);
 
   const handleInputChange = (e) => setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
 
@@ -159,7 +159,8 @@ export default function App() {
       await fetch(GAS_URL, {
         method: "POST", mode: "no-cors",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(newRegis)
+        // ส่งข้อมูล Action แจ้งให้ GAS ทราบว่าเป็นการเซฟคนลงทะเบียน
+        body: JSON.stringify({ action: "register", data: newRegis })
       });
     } catch (error) { console.error("Sheet API Error:", error); }
 
@@ -172,31 +173,31 @@ export default function App() {
     setFormData({ name: '', email: '', phone: '', company: '', role: '', ticketId: config?.tickets?.[0]?.id || '' });
   };
 
+  // 🔥 ดึงทั้งข้อมูลคนลงทะเบียน และ โหลดข้อมูล Config ล่าสุดมาเซ็ตให้หน้าเว็บ
   const syncWithGoogleSheet = async (isAuto = false) => {
     if(!isAuto) setIsSyncing(true);
     try {
-      const response = await fetch(GAS_URL + "?timestamp=" + new Date().getTime(), {
-        cache: 'no-store',
-        headers: {
-          'Pragma': 'no-cache',
-          'Cache-Control': 'no-cache'
-        }
-      });
-      const data = await response.json();
-      if(data && Array.isArray(data)) {
-        const formattedData = data.map(r => ({
+      // 1. โหลดข้อมูล Registrations
+      const resReg = await fetch(GAS_URL + "?action=getRegistrations&timestamp=" + new Date().getTime(), { cache: 'no-store' });
+      const regData = await resReg.json();
+      if(Array.isArray(regData)) {
+        const formattedData = regData.map(r => ({
           id: r.id || r.Id || r.ID || Date.now() + Math.random(),
-          name: r.name || r.Name || '', 
-          email: r.email || r.Email || '',
-          phone: r.phone || r.Phone || '', 
-          company: r.company || r.Company || '',
-          // เพิ่มการดักจับชื่อคอลัมน์หลายรูปแบบ ป้องกันค่าว่าง (NULL)
+          name: r.name || r.Name || '', email: r.email || r.Email || '',
+          phone: r.phone || r.Phone || '', company: r.company || r.Company || '',
           ticketName: r.ticketName || r.TicketName || r['Ticket Name'] || r.ticket || r.Ticket || 'UNKNOWN PASS',
           ticketId: String(r.ticketId || r.TicketId || ''),
           totalPaid: Number(r.totalPaid || r.TotalPaid || r['Total Paid'] || r.total || 0),
           timestamp: r.timestamp || r.Timestamp || ''
         }));
         setRegistrations(formattedData.filter(r => r.name !== ''));
+      }
+
+      // 2. โหลดข้อมูล Config
+      const resConfig = await fetch(GAS_URL + "?action=getConfig&timestamp=" + new Date().getTime(), { cache: 'no-store' });
+      const configData = await resConfig.json();
+      if (configData && configData.title) {
+        setConfig(configData);
       }
     } catch (error) { console.error("Sync Error:", error); }
     if(!isAuto) setIsSyncing(false);
@@ -206,9 +207,20 @@ export default function App() {
 
   const handleArrayChange = (arr, id, field, value) => setConfig(prev => ({ ...prev, [arr]: (prev[arr]||[]).map(i => i.id === id ? { ...i, [field]: value } : i) }));
   
-  const handleSaveConfig = () => {
-    localStorage.setItem('motoGpProPremiumV2', JSON.stringify(config));
-    alert('🏁 บันทึกการตั้งค่าลงระบบเรียบร้อยแล้ว!');
+  // 🔥 ระบบเซฟข้อมูล Config ของ Admin ขึ้น Google Sheet แบบ 100%
+  const handleSaveConfig = async () => {
+    alert('⏳ กำลังบันทึกการตั้งค่าขึ้น Google Sheet...');
+    try {
+      await fetch(GAS_URL, {
+        method: "POST", mode: "no-cors",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "saveConfig", data: config })
+      });
+      localStorage.setItem('motoGpProCloudV3', JSON.stringify(config));
+      alert('🏁 บันทึกการตั้งค่าลงระบบ Google Sheet เรียบร้อยแล้ว! \nผู้ชมทุกคนจะเห็นดีไซน์ล่าสุดนี้ทันที');
+    } catch (error) {
+      alert('❌ เกิดข้อผิดพลาดในการบันทึกข้อมูล กรุณาลองใหม่');
+    }
   };
 
   const addSpeaker = () => setConfig(prev => ({ ...prev, speakers: [...(prev.speakers || []), { id: Date.now(), name: "ชื่อนักบิด/ทีมงาน", role: "สังกัดทีม", tag: "CATEGORY", color: "#DC2626", img: "https://images.unsplash.com/photo-1541344999736-83eca272f6fc?q=80&w=400&auto=format&fit=crop", desc: "ประวัติผลงาน" }] }));
@@ -218,11 +230,19 @@ export default function App() {
   const addTicket = () => setConfig(prev => ({ ...prev, tickets: [...(prev.tickets || []), { id: Date.now(), name: "โซนที่นั่ง/ประเภทบัตร", price: 1500, type: "regular", badge: "NEW", features: "Benefit 1" }] }));
   const removeArrayItem = (arr, id) => setConfig(prev => ({ ...prev, [arr]: (prev[arr]||[]).filter(i => i.id !== id) }));
   
+  // ป้องกันการอัปโหลดรูป Base64 ขนาดใหญ่เกินไปจน Google Sheet พัง
   const handleImageUpload = (e, arr, id) => { 
     const file = e.target.files[0]; 
     if (file) { 
       const reader = new FileReader(); 
-      reader.onloadend = () => handleArrayChange(arr, id, 'img', reader.result); 
+      reader.onloadend = () => {
+        // จำกัดขนาดไม่ให้เกิน 45,000 ตัวอักษร
+        if (reader.result.length > 45000) {
+          alert("⚠️ ขนาดรูปภาพใหญ่เกินไป Google Sheet อาจบันทึกไม่สำเร็จ \nกรุณาใช้ไฟล์ที่เล็กกว่า หรือใช้วิธีนำลิงก์ (URL) รูปภาพจากเน็ตมาวางในช่อง Image URL แทนครับ");
+          return;
+        }
+        handleArrayChange(arr, id, 'img', reader.result);
+      }; 
       reader.readAsDataURL(file); 
     } 
   };
@@ -242,7 +262,7 @@ export default function App() {
   const topTicket = [...ticketStats].sort((a,b) => b.count - a.count)[0];
 
   // ==========================================
-  // CSS: PRO MOTORCYCLE RACING THEME (SMOOTH & CURVED)
+  // CSS: PRO MOTORCYCLE RACING THEME
   // ==========================================
   const customerCss = `
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Kanit:wght@300;400;500;600;700;800;900&display=swap');
@@ -269,7 +289,6 @@ export default function App() {
       margin: 0; 
     }
 
-    /* Track Lines Effect - Smooth Curves */
     .track-bg {
       position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: -1; opacity: 0.15; pointer-events: none;
       background-image: 
@@ -282,7 +301,6 @@ export default function App() {
     .reveal.is-visible { opacity: 1; transform: translateY(0); }
     .delay-1 { transition-delay: 0.1s; } .delay-2 { transition-delay: 0.2s; }
     
-    /* Text Shine Sweep Effect */
     @keyframes shine { to { background-position: 200% center; } }
     .subtitle-sweep {
       background: linear-gradient(90deg, #fff 0%, var(--primary) 50%, #fff 100%);
@@ -306,13 +324,11 @@ export default function App() {
     .sec-title { font-size: 48px; font-weight: 900; color: #fff; margin-bottom: 15px; letter-spacing: -1px; text-transform: uppercase; }
     .sec-line { width: 80px; height: 6px; background: var(--primary); margin: 0 auto; border-radius: 50px; }
 
-    /* Rounded Smooth Buttons */
     .btn { display: inline-flex; align-items: center; gap: 10px; justify-content: center; background: #27272a; color: #fff; border: none; padding: 18px 40px; font-size: 16px; font-weight: 900; cursor: pointer; transition: 0.3s; text-transform: uppercase; letter-spacing: 1px; border-radius: 50px; box-shadow: 0 10px 20px rgba(0,0,0,0.2); }
     .btn:hover:not(:disabled) { background: #3f3f46; transform: translateY(-3px); box-shadow: 0 15px 30px rgba(0,0,0,0.3); }
     .btn-primary { background: var(--primary); color: #fff; box-shadow: 0 10px 25px var(--primary-glow); }
     .btn-primary:hover:not(:disabled) { filter: brightness(1.1); box-shadow: 0 15px 35px var(--primary-glow); }
 
-    /* Navbar */
     .navbar { position: fixed; top: 0; width: 100%; z-index: 1000; padding: 25px 0; transition: all 0.4s ease; border-bottom: 1px solid transparent; }
     .navbar.scrolled { padding: 15px 0; background: rgba(15, 15, 17, 0.95); backdrop-filter: blur(16px); border-bottom: 1px solid var(--border); }
     .nav-wrap { display: flex; justify-content: space-between; align-items: center; }
@@ -322,18 +338,15 @@ export default function App() {
     .nav-links a { color: #d4d4d8; font-weight: 800; cursor: pointer; transition: 0.3s; font-size: 14px; text-transform: uppercase; letter-spacing: 1px; position: relative;}
     .nav-links a:hover { color: var(--primary); }
     
-    /* Subtle Background Animation */
     @keyframes subtleZoom {
       0% { transform: scale(1); }
       50% { transform: scale(1.05); }
       100% { transform: scale(1); }
     }
     
-    /* Hero */
     .hero { min-height: 100vh; display: flex; align-items: center; position: relative; overflow: hidden; }
     .hero-bg { position: absolute; inset: 0; z-index: -1; background-size: cover; background-position: center; animation: subtleZoom 20s ease-in-out infinite; }
     .hero::before { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, rgba(15,15,17,0.95) 0%, rgba(15,15,17,0.4) 100%); z-index: 0; }
-    
     .hero-content { position: relative; z-index: 1; padding-top: 80px; max-width: 850px; }
     .hero h1 { font-size: 80px; line-height: 1.05; margin-bottom: 20px; color: #fff; font-weight: 900; letter-spacing: -2px; text-transform: uppercase; }
     
@@ -345,13 +358,11 @@ export default function App() {
     .grid-4 { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 24px; }
     .grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 32px; }
     
-    /* Concept Cards - Soft Curves */
     .concept-card { padding: 40px 30px; text-align: center; transition: 0.4s; background: var(--bg-card); border: 1px solid var(--border); border-radius: 32px; }
     .concept-card:hover { background: #27272a; transform: translateY(-8px); border-color: var(--primary); box-shadow: 0 20px 40px rgba(0,0,0,0.3); }
     .concept-icon { width: 80px; height: 80px; background: rgba(255,255,255,0.05); border: 2px solid var(--border); display: flex; justify-content: center; align-items: center; margin: 0 auto 20px; font-size: 32px; border-radius: 50%; color: #fff; transition: 0.4s; }
     .concept-card:hover .concept-icon { border-color: var(--primary); box-shadow: 0 0 20px var(--primary-glow); background: var(--primary); }
     
-    /* Speaker Cards */
     .speaker-card { transition: 0.4s; cursor: pointer; background: var(--bg-card); position: relative; border-radius: 32px; border: 1px solid var(--border); overflow: hidden; }
     .speaker-card:hover { transform: translateY(-10px); box-shadow: 0 20px 40px var(--primary-glow); border-color: var(--primary); }
     .speaker-img-wrap { height: 350px; position: relative; }
@@ -360,7 +371,6 @@ export default function App() {
     .speaker-tag { position: absolute; top: 20px; left: 20px; font-size: 11px; font-weight: 900; color: #fff; padding: 8px 16px; letter-spacing: 1px; text-transform: uppercase; border-radius: 50px; box-shadow: 0 10px 20px rgba(0,0,0,0.3); }
     .speaker-info { padding: 25px; text-align: center; }
 
-    /* Timeline */
     .timeline-wrap { max-width: 800px; margin: 0 auto; position: relative; padding-left: 50px; }
     .timeline-wrap::before { content: ''; position: absolute; left: 15px; top: 0; bottom: 0; width: 4px; background: #27272a; border-radius: 50px; }
     .time-card { padding: 30px; display: flex; gap: 30px; align-items: center; margin-bottom: 25px; position: relative; transition: 0.3s; background: var(--bg-card); border: 1px solid var(--border); border-radius: 32px; }
@@ -370,20 +380,17 @@ export default function App() {
     .time-left { width: 100px; flex-shrink: 0; border-right: 2px solid var(--border); padding-right: 20px; text-align: right; }
     .time-text { font-size: 32px; font-weight: 900; color: #fff; line-height: 1; }
 
-    /* Video */
     .video-wrapper { position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; border: 2px solid var(--border); background: #000; border-radius: 32px; transition: 0.4s; }
     .video-wrapper:hover { border-color: var(--primary); box-shadow: 0 20px 50px var(--primary-glow); }
     .video-wrapper iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: 0; }
     .video-shadow-wrap { filter: drop-shadow(0 20px 30px rgba(0,0,0,0.5)); }
 
-    /* Tickets */
     .ticket-wrapper { height: 100%; display: block; cursor: pointer; }
     .ticket-card { padding: 50px 40px; position: relative; display: flex; flex-direction: column; transition: 0.4s; height: 100%; background: var(--bg-card); border: 1px solid var(--border); border-radius: 40px; }
     .ticket-badge { position: absolute; top: -15px; left: 50%; transform: translateX(-50%); background: var(--border); color: #fff; padding: 8px 24px; font-size: 12px; font-weight: 900; letter-spacing: 2px; white-space: nowrap; border-radius: 50px; }
     .ticket-radio:checked + .ticket-wrapper .ticket-card { border: 2px solid var(--primary); background: linear-gradient(180deg, ${config.primaryColor ? config.primaryColor + '1A' : 'rgba(220, 38, 38, 0.1)'} 0%, rgba(24,24,27,1) 100%); box-shadow: 0 20px 50px var(--primary-glow); transform: translateY(-10px); }
     .ticket-radio:checked + .ticket-wrapper .ticket-badge { background: var(--primary); color: #fff; border: none; }
     
-    /* FAQ Accordion */
     .faq-item { border-bottom: 1px solid var(--border); padding: 25px 0; cursor: pointer; }
     .faq-q { font-size: 20px; font-weight: 800; color: #fff; display: flex; justify-content: space-between; align-items: center; }
     .faq-a { font-size: 15px; color: #a1a1aa; margin-top: 15px; line-height: 1.7; display: none; padding-right: 40px; }
@@ -391,7 +398,6 @@ export default function App() {
     .faq-item.active .faq-q { color: var(--primary); }
     @keyframes fadeDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
 
-    /* Form */
     .form-box-wrapper { filter: drop-shadow(0 20px 40px rgba(0,0,0,0.4)); max-width: 850px; margin: 0 auto; }
     .form-box { padding: 60px; background: #18181b; border-radius: 40px; border-top: 6px solid var(--primary); }
     .form-group { margin-bottom: 25px; text-align: left; }
@@ -439,7 +445,7 @@ export default function App() {
                 </span>
               </h1>
               
-              <p style={{ color: '#e4e4e7', fontSize: '18px', maxWidth: '650px', marginBottom: '50px', fontWeight: 500 }} className="delay-1">{config.aboutText}</p>
+              <p style={{ color: '#e4e4e7', fontSize: '20px', maxWidth: '700px', marginBottom: '50px', fontWeight: 500 }} className="delay-1">{config.aboutText}</p>
               
               <div className="flex flex-wrap items-center gap-6 delay-2" style={{ display: 'flex', alignItems: 'center', gap: '30px' }}>
                 <button className="btn btn-primary" style={{ padding: '20px 40px', fontSize: '18px' }} onClick={() => scrollTo('register')}>BOOK PASS ➔</button>
@@ -637,7 +643,7 @@ export default function App() {
           </div>
         </section>
 
-        <footer style={{ background: '#000', padding: '80px 0 40px', borderTop: '2px solid var(--border)' }}>
+        <footer style={{ background: '#000', padding: '80px 0 40px', borderTop: '4px solid var(--primary)' }}>
           <div className="container" style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '40px', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '40px', marginBottom: '40px' }}>
             <div>
               <div className="logo" style={{ marginBottom: '20px' }}><div className="logo-mark">M</div> {config.title}</div>
@@ -761,7 +767,7 @@ export default function App() {
                   <h2 className="text-4xl font-black text-white tracking-tight uppercase">Live Telemetry</h2>
                   <p className="text-zinc-500 text-xs mt-2 font-mono tracking-widest uppercase">Real-time Paddock Data</p>
                 </div>
-                <button onClick={() => syncWithGoogleSheet()} disabled={isSyncing} className="px-6 py-3 bg-white/5 hover:bg-white/10 text-white text-xs font-black uppercase tracking-widest transition-all flex items-center gap-2 border border-white/10 rounded-2xl">
+                <button onClick={() => syncWithGoogleSheet()} disabled={isSyncing} className="px-6 py-3 bg-white/5 hover:bg-white/10 text-white text-xs font-black uppercase tracking-widest transition-all flex items-center gap-2 border border-white/10 rounded-full">
                   <span className={isSyncing ? "animate-spin" : ""}>🔄</span> {isSyncing ? "SYNCING..." : "FORCE SYNC"}
                 </button>
               </div>
@@ -918,7 +924,7 @@ export default function App() {
                 </button>
               </div>
 
-              {/* BACKGROUND IMAGES SETTING */}
+              {/* BACKGROUND IMAGES SETTING (NEW!) */}
               <div className="bg-[#0a0a0a] p-8 border border-white/5 shadow-xl space-y-6 rounded-3xl">
                 <div className="border-b border-white/5 pb-4">
                   <h3 className="text-lg font-black text-white uppercase">🖼️ Background Images</h3>
@@ -1114,7 +1120,7 @@ export default function App() {
 
                     <div className="space-y-1.5 flex-1 flex flex-col">
                       <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mt-2">Access & Perks (Enter for new line)</label>
-                      <textarea value={ticket.features} onChange={(e) => handleArrayChange('tickets', ticket.id, 'features', e.target.value)} className="w-full flex-1 p-4 bg-black border border-white/10 text-sm text-zinc-400 focus:border-red-500 outline-none leading-relaxed rounded-xl" rows="6"></textarea>
+                      <textarea value={ticket.features} onChange={(e) => handleArrayChange('tickets', ticket.id, 'features', e.target.value)} className="w-full flex-1 p-4 bg-black border border-white/10 text-sm text-zinc-400 focus:border-red-500 outline-none leading-relaxed rounded-xl" rows="5"></textarea>
                     </div>
                   </div>
                 ))}
